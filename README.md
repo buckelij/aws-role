@@ -21,13 +21,13 @@ To use aws-role, you need to have your AWS configuration file specified in your 
 
 Now, to access the customer1 profile, I run:
 
-    $ aws-role tjcmv
+    $ aws-role customer1
     ARN: arn:aws:iam::XXXXXXXXX:role/CUSTOMERAdmin
     Access Key acquired: XXXXXXXXXXXXXXXXXXXXXx
 
 And then I use the profile with the normal 'aws' commands:
 
-    $ aws --profile tjcmv ec2 describe-instances
+    $ aws --profile customer1 ec2 describe-instances
     "Reservations": [
     ....
 
