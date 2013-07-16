@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+"""aws-role: acquire and save AWS STS credentials for use by the aws command line tool.
+
+Tested on Python 2.6
+"""
+
+
+import json
+import ConfigParser
+import subprocess
+from os import environ
+import os.path
+import sys
+
+__author__      = "Elijah Buck"
+__copyright__   = "Copyright 2013 Elijah Buck"
+__license__     = "MIT"
+
+#Verify command line arguments
+if not len(sys.argv) == 2:
+    print("Usage: aws-role <rolename>\n\n"
+          "An example section of your aws config file:\n"
+          "   [profile tjtest]\n\n"
+          "Credentials for the tjtest profile would be obtained by running:\n\n"
+          "   aws-role tjtest\n\n"
+          "If this is the first time using the profile, you will be\n"
+          "prompted for the ARN (e.g. arn:aws:iam::5555551234:role/TJAdmin)\n"
+          "which will be saved in the arn key of the profile for subsequent runs\n\n"
+          "To use the profile:"
+          "   aws --profile tjtest ...\n")
+    exit(1)
+
+profile = sys.argv[1]
+
+#determine location of aws config file
+if not 'AWS_CONFIG_FILE' in environ:
+    print("AWS_CONFIG_FILE environment variable must be set")
+    exit(1)
+else:
+    awsConfigFile = environ['AWS_CONFIG_FILE']
+    awsConfig =  ConfigParser.RawConfigParser()
+    awsConfig.read(awsConfigFile)
+
+#read the ARN for the associate profile name from the config file
+if not awsConfig.has_section('default'):
+    print("aws config file must have a [default] profile")
+    exit(1)
+
+if not awsConfig.has_section('profile ' + profile):
+    print("section [profile " + profile + "] does not exist in file" + awsConfigFile + "\n")
+    exit(1)
+
+if not awsConfig.has_option('profile ' + profile, 'arn'):
+    role = raw_input("ARN: ")
+    awsConfig.set('profile ' + profile, 'arn', role)
+    with open(awsConfigFile, 'wb') as configfile:
+	awsConfig.write(configfile)
+else:
+    role = awsConfig.get('profile ' + profile, 'arn')
+
+#Run aws commandline tool to get STS credentials
+if os.path.isfile("/usr/bin/aws"):
+    awsReq = subprocess.Popen(["/usr/bin/aws", "sts", "assume-role",
+                               "--role-arn", role, 
+                               "--role-session-name", environ['USER']],
+                               stdout=subprocess.PIPE)
+else:
+    print("aws commandline tool not found at /usr/bin/aws\n")
+    exit(1)
+
+awsJSON = json.loads(awsReq.communicate()[0])
+
+#Set the required configfile options to activate the profile
+awsConfig.set('profile ' + profile, 'aws_secret_access_key', awsJSON['Credentials']['SecretAccessKey'])
+awsConfig.set('profile ' + profile, 'aws_security_token', awsJSON['Credentials']['SessionToken'])
+awsConfig.set('profile ' + profile, 'aws_access_key_id', awsJSON['Credentials']['AccessKeyId'])
+with open(awsConfigFile, 'wb') as configfile:
+    awsConfig.write(configfile)
+
+print("Access Key acquired: " + awsJSON['Credentials']['AccessKeyId'] + "\n"
+      "To use the new credentials specify the profile in your aws command, e.g.:\n"
+      "    aws --profile " + profile + " ec2 describe-instances\n")
