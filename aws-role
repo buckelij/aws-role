@@ -3,7 +3,10 @@
 
 Tested on Python 2.6
 """
-
+#author: Elijah Buck
+#copyright: 2013
+#license: MIT
+#website: https://github.com/buckelij/aws-role/
 
 import json
 import ConfigParser
@@ -11,10 +14,6 @@ import subprocess
 from os import environ
 import os.path
 import sys
-
-__author__      = "Elijah Buck"
-__copyright__   = "Copyright 2013 Elijah Buck"
-__license__     = "MIT"
 
 #Verify command line arguments
 if not len(sys.argv) == 2:
